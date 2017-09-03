@@ -26,7 +26,7 @@ class WorkoutLogger(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
-        for F in (StartPage, TotalDistance, InputWorkout, PrintDateDistance):
+        for F in (StartPage, TotalDistance, InputWorkout, PrintDateDistance, PlotChart):
             pageName = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[pageName] = frame
@@ -60,12 +60,13 @@ class StartPage(tk.Frame):
                                         command=lambda: controller.show_frame("InputWorkout"))
         radioButtonPrint=tk.Radiobutton(self, text="Print Date Distance", variable=choice, value=3,
                                                     command=lambda: controller.show_frame("PrintDateDistance"))
-        radioButtonChart=tk.Radiobutton(self, text="Plot Chart", variable=choice, value=3,
+        radioButtonChart=tk.Radiobutton(self, text="Plot Chart", variable=choice, value=4,
                                                     command=lambda: controller.show_frame("PlotChart"))
         
         radioButtonDistance.pack()
         radioButtonInput.pack()
         radioButtonPrint.pack()
+        radioButtonChart.pack()
 
 class TotalDistance(tk.Frame):
 
@@ -91,12 +92,18 @@ class TotalDistance(tk.Frame):
         #print(result)
         #distance = 'distance'
         #timestamp = 'timestamp'
+        monthPersonDistMap = dict()
         personMap = dict()
         for row in result.get('values'):
             #print(row)
             #log = dict()
             #log[distance]=row[1]
-            #log[timestamp]=row[0]
+            #month=datetime.datetime.fromtimestamp(row[0]).timetuple()
+            #personDistMap=monthPersonDistMap.get(month)
+            #if personDistMap is None:
+                #personDistMap = dict()
+            #monthPersonDistMap[month]=personDistMap
+            
             personSplit=row[2].split(',')
             for person in personSplit:
                 if personMap.get(person) is None:
@@ -224,16 +231,13 @@ class PlotChart(tk.Frame):
         label.pack(side="top", fill="x", pady=10)
 
         personDateListDistanceMap = self.getPersonDateListDistanceMap()
-
-        dateList = getDateList()
+        print(personDateListDistanceMap)
+        dateList = self.getDateList()
         personList=[]
         for person in personDateListDistanceMap.keys():
             personList.append(person)
             for date in dateList:
-                dateSplit=date.split('-')
-                mapDateStr='{0}/{1}/{2}'
-                mapDate=mapDateStr.format(dateSplit[2],dateSplit[1],dateSplit[0])
-                listWorkouts = personDateListDistanceMap.get(person).get(mapDate)
+                listWorkouts = personDateListDistanceMap.get(person).get(date)
                 #if listWorkouts is None or len(lisWorkouts)==0:
                     
 
@@ -244,7 +248,7 @@ class PlotChart(tk.Frame):
         dateList=[]
         #Return a list of dates from 24th december 2016 till current date
         start = datetime.date(year=2016, month=12, day=24)
-        timestruct=time.time()
+        timestruct=time.localtime()
         end = datetime.date(year=timestruct.tm_year, month=timestruct.tm_mon, day=timestruct.tm_mday)
         for n in range((end-start).days):
             dateList.append(start+datetime.timedelta(n))
@@ -257,7 +261,7 @@ class PlotChart(tk.Frame):
         for entry in result.get('values'):
             p = str(entry[2])
             personSplit=p.split(',')
-            date = entry[0]
+            date = datetime.date.fromtimestamp(int(entry[0])/1000)
             dist = float(entry[1])
             for person in personSplit:
                 if personDateListDistanceMap.get(person) is None:
@@ -265,11 +269,12 @@ class PlotChart(tk.Frame):
                     dateDistListMap[date]=[dist]
                     personDateListDistanceMap[person]=dateDistListMap
                 else:
-                    dateDistListMap = personDateDistMap.get(person)
+                    dateDistListMap = personDateListDistanceMap.get(person)
                     if dateDistListMap.get(date) is None:
                         dateDistListMap[date]=[dist]
                     else:
                         dateDistListMap.get(date).append(dist)
+        return personDateListDistanceMap
 
    
 if __name__ == "__main__":
