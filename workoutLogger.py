@@ -3,12 +3,10 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.tools import run_flow as run_oauth2
 from oauth2client.file import Storage as CredentialStorage
 import httplib2
-from apiclient.discovery import build as discovery_build
-from tkinter.constants import *
+import apiclient.discovery
 import time
 import datetime
-import numpy as np
-import matplotlib.pyplot as plt
+import WorkoutLogger.bar_chart as chart
 
 TITLE_FONT = ("Helvetica", 18, "bold")
 
@@ -89,21 +87,9 @@ class TotalDistance(tk.Frame):
 
     def getTotalDistanceCovered(self):
         result = service.spreadsheets().values().get(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C', majorDimension='ROWS').execute()
-        #print(result)
-        #distance = 'distance'
-        #timestamp = 'timestamp'
         monthPersonDistMap = dict()
         personMap = dict()
         for row in result.get('values'):
-            #print(row)
-            #log = dict()
-            #log[distance]=row[1]
-            #month=datetime.datetime.fromtimestamp(row[0]).timetuple()
-            #personDistMap=monthPersonDistMap.get(month)
-            #if personDistMap is None:
-                #personDistMap = dict()
-            #monthPersonDistMap[month]=personDistMap
-            
             personSplit=row[2].split(',')
             for person in personSplit:
                 if personMap.get(person) is None:
@@ -111,8 +97,6 @@ class TotalDistance(tk.Frame):
                     personMap[person] = float(row[1])
                 else:
                     personMap[person] = float(personMap.get(person)) + float(row[1])
-            #print('Total distance covered by each person')
-            #print(personMap)
         return personMap
 
 class InputWorkout(tk.Frame):
@@ -145,28 +129,16 @@ class InputWorkout(tk.Frame):
         button.pack()
 
     def saveData(self, distance, person, d):
-        #distance = float(distanceEntry.get())
-        #print(dist)
-        #person = personEntry.get()
-        #print(p)
-        #d = dateEntry.get()
-        #print(d)
         timestamp = 0
         if len(d)==0:
                 timestamp = int(round(time.time() * 1000))
         else:
                 timestamp = datetime.datetime.strptime(d, "%d/%m/%Y").timestamp()*1000
-        #print(millis)
-        #reconvert to string to check...
-        #print(datetime.datetime.fromtimestamp(millis).strftime("%d/%m/%Y"))
-        #def writeToSheet(timestamp, distance, person):
-        #cellValues = [ [timestamp,distance,person], ['1482543000000','100','Z'] ]
         cellValues = [ [timestamp,distance,person] ]
         body=dict()
         body['values']=cellValues
         result = service.spreadsheets().values().append(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C',valueInputOption='RAW', body=body).execute()
-        #print(result)
-        
+
 class PrintDateDistance(tk.Frame):
     
     def __init__(self, parent, controller):
@@ -230,51 +202,90 @@ class PlotChart(tk.Frame):
         label = tk.Label(self, text="Plots a stacked bar by date", font=TITLE_FONT)
         label.pack(side="top", fill="x", pady=10)
 
-        personDateListDistanceMap = self.getPersonDateListDistanceMap()
-        print(personDateListDistanceMap)
-        dateList = self.getDateList()
-        personList=[]
-        for person in personDateListDistanceMap.keys():
+        personMonthAndDistance = self.getPersonMonthAndDistance()
+        monthYearList = self.getMonthYearList()
+        personList = []
+        personDistListMap = dict()
+        for person in personMonthAndDistance.keys():
             personList.append(person)
-            for date in dateList:
-                listWorkouts = personDateListDistanceMap.get(person).get(date)
-                #if listWorkouts is None or len(lisWorkouts)==0:
-                    
+            dist_list = []
+            personDistListMap[person] = dist_list
+
+            for monthYear in monthYearList:
+                distance = personMonthAndDistance.get(person).get(monthYear)
+                dist_list.append(distance)
+
+        #chart.draw_chart('Month', 'Distance(km)', 'Person Distance Chart', monthYearList, personList, personDistListMap)
 
         button = tk.Button(self, text="Go to the start page", command=lambda: controller.show_frame("StartPage"))
         button.pack()
 
-    def getDateList(self):
-        dateList=[]
-        #Return a list of dates from 24th december 2016 till current date
+    def getMonthYearList(self):
+        monthYearList = []
+        #Return a list of month-years from 24th december 2016 till current date
         start = datetime.date(year=2016, month=12, day=24)
         timestruct=time.localtime()
         end = datetime.date(year=timestruct.tm_year, month=timestruct.tm_mon, day=timestruct.tm_mday)
         for n in range((end-start).days):
-            dateList.append(start+datetime.timedelta(n))
-        return dateList
+            date=start+datetime.timedelta(n)
+            monthYearList.append(str(date.month)+"-"+str(date.year))
+        return monthYearList
 
-    def getPersonDateListDistanceMap(self):
+    # def getDateList(self):
+    #     dateList=[]
+    #     #Return a list of dates from 24th december 2016 till current date
+    #     start = datetime.date(year=2016, month=12, day=24)
+    #     timestruct=time.localtime()
+    #     end = datetime.date(year=timestruct.tm_year, month=timestruct.tm_mon, day=timestruct.tm_mday)
+    #     for n in range((end-start).days):
+    #         dateList.append(start+datetime.timedelta(n))
+    #     return dateList
+
+    # def getPersonDateListDistanceMap(self):
+    #     result = service.spreadsheets().values().get(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C', majorDimension='ROWS').execute()
+    #
+    #     personDateListDistanceMap = dict()
+    #     for entry in result.get('values'):
+    #         p = str(entry[2])
+    #         personSplit=p.split(',')
+    #         date = datetime.date.fromtimestamp(int(entry[0])/1000)
+    #         dist = float(entry[1])
+    #         for person in personSplit:
+    #             if personDateListDistanceMap.get(person) is None:
+    #                 dateDistListMap = dict()
+    #                 dateDistListMap[date]=[dist]
+    #                 personDateListDistanceMap[person]=dateDistListMap
+    #             else:
+    #                 dateDistListMap = personDateListDistanceMap.get(person)
+    #                 if dateDistListMap.get(date) is None:
+    #                     dateDistListMap[date]=[dist]
+    #                 else:
+    #                     dateDistListMap.get(date).append(dist)
+    #     return personDateListDistanceMap
+
+    def getPersonMonthAndDistance(self):
         result = service.spreadsheets().values().get(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C', majorDimension='ROWS').execute()
-
-        personDateListDistanceMap = dict()
+        personMonthDistMap = dict()
         for entry in result.get('values'):
             p = str(entry[2])
             personSplit=p.split(',')
             date = datetime.date.fromtimestamp(int(entry[0])/1000)
+            #Extract month from date-time value
+            month_year_list=[str(date.month), str(date.year)]
+            month_year = "-".join(month_year_list)
             dist = float(entry[1])
             for person in personSplit:
-                if personDateListDistanceMap.get(person) is None:
-                    dateDistListMap = dict()
-                    dateDistListMap[date]=[dist]
-                    personDateListDistanceMap[person]=dateDistListMap
+                if personMonthDistMap.get(person) is None:
+                    monthDistMap = dict()
+                    monthDistMap[month_year]=dist
+                    personMonthDistMap[person]=monthDistMap
                 else:
-                    dateDistListMap = personDateListDistanceMap.get(person)
-                    if dateDistListMap.get(date) is None:
-                        dateDistListMap[date]=[dist]
+                    monthDistMap = personMonthDistMap.get(person)
+                    if monthDistMap.get(month_year) is None:
+                        monthDistMap[month_year]=dist
                     else:
-                        dateDistListMap.get(date).append(dist)
-        return personDateListDistanceMap
+                        monthDistMap[month_year]=float(monthDistMap.get(month_year)) + dist
+        return personMonthDistMap
 
    
 if __name__ == "__main__":
@@ -285,6 +296,6 @@ if __name__ == "__main__":
     #credentials = run_oauth2(flow, credential_storage)
     credentials.authorize(httplib2.Http())
     #response = http.request('https://sheets.googleapis.com/v4/spreadsheets/1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI?includeGridData=true',method='GET')
-    service = discovery_build('sheets','v4', credentials=credentials)
+    service = apiclient.discovery.build('sheets','v4', credentials=credentials)
     app = WorkoutLogger()
     app.mainloop()
