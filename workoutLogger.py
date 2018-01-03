@@ -6,9 +6,18 @@ import httplib2
 import apiclient.discovery
 import time
 import datetime
-import WorkoutLogger.bar_chart as chart
+import bar_chart as chart
 
 TITLE_FONT = ("Helvetica", 18, "bold")
+
+flow = flow_from_clientsecrets('C:\\Users\\zarinr\\Desktop\\client_id.json',
+                               scope='https://www.googleapis.com/auth/spreadsheets',
+                               redirect_uri='http://www.google.com')
+flow.step1_get_authorize_url()
+credential_storage = CredentialStorage('C:\\Users\\zarinr\\Desktop\\credentials.json')
+credentials = credential_storage.get()
+# credentials = run_oauth2(flow, credential_storage)
+credentials.authorize(httplib2.Http())
 
 class WorkoutLogger(tk.Tk):
     
@@ -71,12 +80,14 @@ class TotalDistance(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
-        distance = self.getTotalDistanceCovered()
+        yearPersonDistance = self.getTotalDistanceCovered()
         distanceDisplayText = str("Total Distance Covered is :")
         distList = []
-        for entry in distance:
-            distList.append(str(entry))
-            distList.append(str(distance[entry]))
+        for key, value in yearPersonDistance.items():
+            distList.append(str(key))
+            for key1, value1 in value.items():
+                distList.append(str(key1))
+                distList.append(str(value1))
         labelText = tk.Label(self, text=distanceDisplayText, font=TITLE_FONT)
         labelText.pack(side="top", fill="x", pady=10)
         labelDist = tk.Label(self, text=' '.join(distList), font=TITLE_FONT)
@@ -86,10 +97,19 @@ class TotalDistance(tk.Frame):
         button.pack()
 
     def getTotalDistanceCovered(self):
+        service = apiclient.discovery.build('sheets', 'v4', credentials=credentials)
         result = service.spreadsheets().values().get(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C', majorDimension='ROWS').execute()
-        monthPersonDistMap = dict()
-        personMap = dict()
+        yearPersonDistMap = dict()
+
         for row in result.get('values'):
+            workoutDate = int(row[0])/1000
+            year=datetime.datetime.fromtimestamp(int(row[0])/1000).year
+            personMap = dict()
+            if yearPersonDistMap.get(year) is None:
+                yearPersonDistMap[year] = personMap
+            else:
+                personMap = yearPersonDistMap[year]
+
             personSplit=row[2].split(',')
             for person in personSplit:
                 if personMap.get(person) is None:
@@ -97,7 +117,7 @@ class TotalDistance(tk.Frame):
                     personMap[person] = float(row[1])
                 else:
                     personMap[person] = float(personMap.get(person)) + float(row[1])
-        return personMap
+        return yearPersonDistMap
 
 class InputWorkout(tk.Frame):
 
@@ -137,6 +157,7 @@ class InputWorkout(tk.Frame):
         cellValues = [ [timestamp,distance,person] ]
         body=dict()
         body['values']=cellValues
+        service = apiclient.discovery.build('sheets', 'v4', credentials=credentials)
         result = service.spreadsheets().values().append(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C',valueInputOption='RAW', body=body).execute()
 
 class PrintDateDistance(tk.Frame):
@@ -175,6 +196,7 @@ class PrintDateDistance(tk.Frame):
         button.pack()
 
     def getPersonDateAndDistance(self):
+        service = apiclient.discovery.build('sheets', 'v4', credentials=credentials)
         result = service.spreadsheets().values().get(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C', majorDimension='ROWS').execute()
         personDateDistMap = dict()
         for entry in result.get('values'):
@@ -264,6 +286,7 @@ class PlotChart(tk.Frame):
     #     return personDateListDistanceMap
 
     def getPersonMonthAndDistance(self):
+        service = apiclient.discovery.build('sheets', 'v4', credentials=credentials)
         result = service.spreadsheets().values().get(spreadsheetId='1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI', range='Sheet1!A:C', majorDimension='ROWS').execute()
         personMonthDistMap = dict()
         for entry in result.get('values'):
@@ -289,13 +312,5 @@ class PlotChart(tk.Frame):
 
    
 if __name__ == "__main__":
-    flow = flow_from_clientsecrets('C:\\Users\\zarinr\\Desktop\\client_id.json',scope='https://www.googleapis.com/auth/spreadsheets', redirect_uri='http://www.google.com')
-    flow.step1_get_authorize_url()
-    credential_storage = CredentialStorage('C:\\Users\\zarinr\\Desktop\\credentials.json')
-    credentials = credential_storage.get()
-    #credentials = run_oauth2(flow, credential_storage)
-    credentials.authorize(httplib2.Http())
-    #response = http.request('https://sheets.googleapis.com/v4/spreadsheets/1jSh5iNMI9azaaprs5BulcJXtGLiotMLPIRvjloUtTqI?includeGridData=true',method='GET')
-    service = apiclient.discovery.build('sheets','v4', credentials=credentials)
     app = WorkoutLogger()
     app.mainloop()
