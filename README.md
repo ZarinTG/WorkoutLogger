@@ -4,3 +4,9 @@ It does the following
 1. Input a workout (currently logs only distance, date and person)
 2. Get the total distance covered by various people
 3. Print the dates and distances by each person
+
+Dependencies:
+Python version 3.6+
+Google oauth2client - https://github.com/google/oauth2client
+Google API client library for python - https://developers.google.com/api-client-library/python/start/installation
+numpy, matplotlib
