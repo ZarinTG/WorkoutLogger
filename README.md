@@ -6,7 +6,8 @@ It does the following
 3. Print the dates and distances by each person
 
 Dependencies:
-Python version 3.6+
-Google oauth2client - https://github.com/google/oauth2client
-Google API client library for python - https://developers.google.com/api-client-library/python/start/installation
-numpy, matplotlib
+1. Python version 3.6+
+2. Google oauth2client - https://github.com/google/oauth2client
+3. Google API client library for python - https://developers.google.com/api-client-library/python/start/installation
+4. numpy
+5. matplotlib
